@@ -1,0 +1,143 @@
+#include<stdio.h>
+#include<math.h>
+#define MAXSIZE 10  //Maximum size of output array
+
+/*self-defined vtkData structure*/
+struct vtkData
+{
+    double x,y,z,w;
+};
+
+typedef struct vtkData vtkDataArray;
+
+int indexOutputPt=0;    //counter to maintain current index of output array
+
+/*Function to insert next tuple in the output array*/
+void insertNextTuple(vtkDataArray* outputPt,double Px,double Py,double Pz,double Pw)
+{
+    if(indexOutputPt<MAXSIZE)
+    {
+        outputPt[indexOutputPt].x=Px;
+        outputPt[indexOutputPt].y=Py;
+        outputPt[indexOutputPt].z=Pz;
+        outputPt[indexOutputPt].w=Pw;
+        indexOutputPt++;
+    }
+    else
+    {
+        printf("\nOutput Array already full!");
+    }
+}
+
+double fact(int n)
+{
+    if(n==0)
+        return 1;
+    return n*fact(n-1);
+}
+
+double binomial(int n,int i)
+{
+    double bin=fact(n)/(fact(i)*fact(n-i));
+    return bin;
+}
+
+double Bernstein(int i,int n,double t)
+{
+    double ret=pow(t,i)*pow((1-t),(n-i));
+    ret *= binomial(n,i);
+    return ret;
+}
+
+void InterpolateOnPatch(vtkDataArray* outputPt, int dim, vtkDataArray* P_i, int* degree, double* r)
+{
+    double Px=0,Py=0,Pz=0,Pw=0;
+    if(dim==1)
+    {
+        int i=0;
+        int n=degree[0];
+        double t=r[0];
+        for(i=0;i<=n;i++)
+        {
+            Px += (P_i[i].x)*(Bernstein(i,n,t));
+            Py += (P_i[i].y)*(Bernstein(i,n,t));
+            Pz += (P_i[i].z)*(Bernstein(i,n,t));
+            Pw += (P_i[i].w)*(Bernstein(i,n,t));
+        }
+    }
+
+    if(dim==2)
+    {
+        int i=0,j=0,k=0;
+        int n=degree[0];
+        int m=degree[1];
+        double t=r[0],u=r[1];
+        for(i=0;i<=n;i++)
+        {
+            for(j=0;j<=m;j++)
+            {
+                Px += (P_i[k].x)*(Bernstein(i,n,t)*Bernstein(j,m,u));
+                Py += (P_i[k].y)*(Bernstein(i,n,t)*Bernstein(j,m,u));
+                Pz += (P_i[k].z)*(Bernstein(i,n,t)*Bernstein(j,m,u));
+                Pw += (P_i[k].w)*(Bernstein(i,n,t)*Bernstein(j,m,u));
+                k++;
+            }
+        }
+    }
+
+    if(dim==3)
+    {
+        int i=0,j=0,k=0,a=0;
+        int n=degree[0];
+        int m=degree[1];
+        int l=degree[2];
+        double t=r[0],u=r[1],v=r[2];
+        for(i=0;i<=n;i++)
+        {
+            for(j=0;j<=m;j++)
+            {
+                for(a=0;a<=l;a++)
+                {
+                    Px += (P_i[k].x)*(Bernstein(i,n,t)*Bernstein(j,m,u)*Bernstein(a,l,v));
+                    Py += (P_i[k].y)*(Bernstein(i,n,t)*Bernstein(j,m,u)*Bernstein(a,l,v));
+                    Pz += (P_i[k].z)*(Bernstein(i,n,t)*Bernstein(j,m,u)*Bernstein(a,l,v));
+                    Pw += (P_i[k].w)*(Bernstein(i,n,t)*Bernstein(j,m,u)*Bernstein(a,l,v));
+                    k++;
+                }
+            }
+        }
+    }
+
+    insertNextTuple(outputPt,Px,Py,Pz,Pw);
+    printf("\nPx=%lf Py=%lf Pz=%lf Pw=%lf",outputPt[indexOutputPt-1].x,outputPt[indexOutputPt-1].y,outputPt[indexOutputPt-1].z,outputPt[indexOutputPt-1].w);
+}
+
+int main()
+{
+    int dim=2;
+    double r[2]={0.5,0.5};
+    int degree[2]={1,1};
+    vtkDataArray P_i[4];
+    P_i[0].x=0;
+    P_i[0].y=0;
+    P_i[0].z=0;
+    P_i[0].w=1;
+
+    P_i[1].x=0;
+    P_i[1].y=1;
+    P_i[1].z=1;
+    P_i[1].w=1;
+
+    P_i[2].x=1;
+    P_i[2].y=0;
+    P_i[2].z=2;
+    P_i[2].w=1;
+
+    P_i[3].x=1;
+    P_i[3].y=1;
+    P_i[3].z=0;
+    P_i[3].w=1;
+
+    vtkDataArray outputPt[MAXSIZE];
+    InterpolateOnPatch(outputPt,dim,P_i,degree,r);
+}
